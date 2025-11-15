@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  # 1. Serviço da API
+  api:
+    build: . # Constrói a partir do Dockerfile na pasta atual
+    container_name: futebol_api
+    ports:
+      - "8000:8000" # Mapeia a porta 8000 do host para a 8000 do container
+    env_file:
+      - .env # Carrega TODAS as variáveis do .env para dentro deste container
+    depends_on:
+      - db # Só inicia a API depois que o serviço 'db' estiver pronto
+    networks:
+      - app-net # Conecta esta API na nossa rede customizada
+
+  # 2. Serviço do Banco de Dados
+  db:
+    image: postgres:15-alpine # Imagem oficial do Postgres
+    container_name: futebol_db
+    env_file:
+      - .env # Carrega as variáveis (POSTGRES_USER, POSTGRES_PASSWORD, etc)
+    ports:
+      - "5432:5432" # Mapeia a porta 5432 do host para a 5432 do container
+    volumes:
+      # Volume NOMEADO: Garante a persistência dos dados do banco
+      - pg_data:/var/lib/postgresql/data
+      # Volume BIND MOUNT: Mapeia nosso script init.sql para a pasta de inicialização
+      - ./db_init:/docker-entrypoint-initdb.d
+    networks:
+      - app-net # Conecta o DB na mesma rede da API
+
+# Definição dos recursos globais
+volumes:
+  pg_data: # Define o volume nomeado que usamos acima
+
+networks:
+  app-net: # Define a rede customizada
+    driver: bridge # Tipo de rede padrão do Docker
