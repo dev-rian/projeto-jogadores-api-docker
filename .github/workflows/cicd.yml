@@ -82,11 +82,8 @@ jobs:
           script: |
             cd /home/${{ secrets.USERNAME }}/app
             
-            # Exporta o usuário para o docker-compose usar
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
             
-            # Baixa a nova imagem
-            docker compose -f docker-compose.prod.yml pull
+            docker-compose -f docker-compose.prod.yml pull
             
-            # Recria os containers (apenas se mudou algo)
-            docker compose -f docker-compose.prod.yml up -d
+            docker-compose -f docker-compose.prod.yml up -d
