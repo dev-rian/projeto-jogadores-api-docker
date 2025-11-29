@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  api:
+    # AQUI ESTÁ A MUDANÇA: Não usamos 'build', usamos 'image'
+    # O ${DOCKER_USERNAME} virá do servidor, ou você pode colocar seu user fixo
+    image: ${DOCKER_USERNAME}/futebol-api:latest
+    container_name: futebol_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - app-net
+    restart: always
+
+  db:
+    image: postgres:15-alpine
+    container_name: futebol_db
+    env_file:
+      - .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      # Nota: Em produção, o init.sql precisa estar no servidor
+      - ./db_init:/docker-entrypoint-initdb.d
+    networks:
+      - app-net
+    restart: always
+
+volumes:
+  pg_data:
+
+networks:
+  app-net:
+    driver: bridge
