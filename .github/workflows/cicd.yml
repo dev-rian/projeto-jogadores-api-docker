@@ -1,11 +1,11 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline (Azure + Terraform)
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  # ETAPA 1: Testes (CI) [cite: 13]
+  # ETAPA 1: Testes (CI) - MANTIDO IGUAL AO SEU
   test:
     runs-on: ubuntu-latest
     steps:
@@ -24,13 +24,12 @@ jobs:
 
       - name: Rodar Testes
         run: |
-          # Adiciona o diretório atual ao PYTHONPATH para o teste achar o 'app'
           export PYTHONPATH=$PYTHONPATH:.
           pytest
 
-  # ETAPA 2: Build & Push Docker (CD Parte 1) [cite: 4]
+  # ETAPA 2: Build & Push Docker (CD Parte 1) - MANTIDO IGUAL AO SEU
   build-and-push:
-    needs: test # Só roda se os testes passarem
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
@@ -48,14 +47,57 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          # Tags: latest e o SHA do commit (para versionamento)
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/futebol-api:latest
             ${{ secrets.DOCKER_USERNAME }}/futebol-api:${{ github.sha }}
 
-  # ETAPA 3: Deploy no Servidor (CD Parte 2) [cite: 47]
+  # --- NOVO JOB: INFRAESTRUTURA (Terraform) ---
+  provision-infra:
+    needs: test # Pode rodar em paralelo com o build
+    runs-on: ubuntu-latest
+    
+    # Exporta o IP gerado para o próximo job usar
+    outputs:
+      server_ip: ${{ steps.get_ip.outputs.ip }}
+
+    # Credenciais da Azure para o Terraform
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+        # O backend da Azure precisa das credenciais (já carregadas no env acima)
+        env:
+          pass: true 
+
+      - name: Terraform Apply
+        # Passa a chave pública SSH para o Terraform injetar na máquina nova
+        run: terraform apply -auto-approve -var="public_key=${{ secrets.SSH_PUBLIC_KEY }}"
+        working-directory: ./terraform
+
+      - name: Capturar IP do Servidor
+        id: get_ip
+        working-directory: ./terraform
+        run: |
+          # Pega o IP do output do Terraform e salva na variável do GitHub
+          RAW_IP=$(terraform output -raw public_ip_address)
+          echo "IP Provisionado: $RAW_IP"
+          echo "ip=$RAW_IP" >> $GITHUB_OUTPUT
+
+  # ETAPA 3: Deploy no Servidor (ATUALIZADO PARA USAR IP DINÂMICO)
   deploy:
-    needs: build-and-push
+    needs: [build-and-push, provision-infra] # Espera a infra e o build ficarem prontos
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
@@ -64,26 +106,30 @@ jobs:
       - name: Copiar arquivos via SCP
         uses: appleboy/scp-action@master
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
-          # Copiamos apenas o necessário para rodar
+          # AQUI MUDOU: Usa o IP que o Terraform criou, não o segredo fixo
+          host: ${{ needs.provision-infra.outputs.server_ip }}
+          username: azureuser # Usuário padrão da Azure (confirme no seu main.tf)
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
           source: "docker-compose.prod.yml,db_init"
-          target: "/home/${{ secrets.USERNAME }}/app"
+          target: "/home/azureuser/app"
 
       - name: Executar Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
+          # AQUI MUDOU: Usa o IP que o Terraform criou
+          host: ${{ needs.provision-infra.outputs.server_ip }}
+          username: azureuser
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
           script: |
-            cd /home/${{ secrets.USERNAME }}/app
+            cd /home/azureuser/app
             
+            # Exporta a variável para o docker-compose usar
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
             
-            docker-compose -f docker-compose.prod.yml pull
+            # Garante que o Docker tem permissão (caso o user_data tenha falhado em algo)
+            # Mas o user_data.sh já deve ter resolvido isso.
             
-            docker-compose -f docker-compose.prod.yml up -d
+            sudo docker compose -f docker-compose.prod.yml pull
+            sudo docker compose -f docker-compose.prod.yml up -d
