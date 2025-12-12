@@ -8,8 +8,8 @@ terraform {
   # Configuração do Backend (Onde o arquivo de estado ficará salvo na nuvem) [cite: 87, 91]
   # Você precisará criar este Storage Account manualmente no portal antes (veja Passo 4)
   backend "azurerm" {
-    resource_group_name  = "rg-terraform-state"
-    storage_account_name = "tfstatefutebol " # Mude para um nome único
+    resource_group_name  = "NetworkWatcherRG"
+    storage_account_name = "tfstatefutebol"
     container_name       = "container1"
     key                  = "prod.terraform.tfstate"
   }
