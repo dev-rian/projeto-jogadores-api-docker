@@ -26,7 +26,7 @@ provider "azurerm" {
 # 1. Grupo de Recursos
 resource "azurerm_resource_group" "rg" {
   name     = "rg-atividade-cicd-v2"
-  location = "eastus2" 
+  location = "centralus" 
 }
 
 # 2. Rede Virtual e Subnet
