@@ -43,9 +43,10 @@ resource "azurerm_subnet" "subnet" {
 # 3. IP Público (Para acessarmos via SSH e Web) [cite: 84]
 resource "azurerm_public_ip" "public_ip" {
   name                = "public-ip-cicd"
-  location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  allocation_method   = "Dynamic"
+  location            = azurerm_resource_group.rg.location
+  allocation_method   = "Static"    # MUDOU DE Dynamic PARA Static
+  sku                 = "Standard"  # MUDOU DE Basic PARA Standard
 }
 
 # 4. Firewall (Network Security Group) - Liberando SSH (22) e HTTP (80)
