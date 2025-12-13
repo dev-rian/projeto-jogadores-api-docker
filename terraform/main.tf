@@ -21,7 +21,7 @@ provider "azurerm" {
 
 # 1. Grupo de Recursos
 resource "azurerm_resource_group" "rg" {
-  name     = "rg-atividade-cicd"
+  name     = "rg-atividade-cicd-v2"
   location = "eastus2" 
 }
 
