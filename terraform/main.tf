@@ -19,10 +19,10 @@ provider "azurerm" {
   features {}
 }
 
-# 1. Grupo de Recursos (A "pasta" onde tudo fica)
+# 1. Grupo de Recursos
 resource "azurerm_resource_group" "rg" {
   name     = "rg-atividade-cicd"
-  location = "East US 2" # Região liberada para estudantes
+  location = "westus2" 
 }
 
 # 2. Rede Virtual e Subnet
