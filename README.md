@@ -4,7 +4,7 @@
 
 Este projeto implementa uma API CRUD simples em Python (FastAPI) para gerenciar jogadores de futebol, rodando em um ambiente multi-container com Docker e Docker Compose. O projeto inclui um pipeline completo de CI/CD utilizando GitHub Actions.
 
-Objetivos do Projeto:
+## Objetivos do Projeto:
 
 - Dockerfile multi-stage com imagens Alpine (leves e otimizadas).
 - Docker Compose para orquestrar serviços (API + Banco de Dados).
@@ -14,10 +14,30 @@ Objetivos do Projeto:
 - Segurança: Configuração de usuário não-root para a aplicação acessar o banco.
 - CI/CD: Automação de testes, build e deploy em VPS.
 
-## Pré-requisitos (Rodando localmente)
+## Pré-requisitos
+
+### Rodando localmente
 
 - Docker
 - Docker Compose
+
+### Infra com Terraform
+
+Para provisionar a infraestrutura na Azure usando Terraform, configure os seguintes Secrets no GitHub (Settings > Secrets and variables > Actions):
+
+- `TF_API_TOKEN`: Token de autenticação do Terraform Cloud (se aplicável).
+- `AZURE_CLIENT_ID`: ID do cliente da aplicação Azure.
+- `AZURE_CLIENT_SECRET`: Secret do cliente Azure para autenticação.
+- `AZURE_SUBSCRIPTION_ID`: ID da assinatura Azure.
+- `AZURE_TENANT_ID`: ID do tenant Azure.
+
+## Instruções de Boot (Azure)
+
+O servidor é provisionado automaticamente na Azure através do Terraform. Durante a inicialização:
+
+- A VM é criada com user_data script que instala Docker e Docker Compose automaticamente.
+- Nenhuma instalação manual de Docker é necessária.
+- O ambiente está pronto para receber o deploy da aplicação via CI/CD pipeline.
 
 ## Como Rodar
 
@@ -31,7 +51,7 @@ Objetivos do Projeto:
     Crie um arquivo `.env` na raiz do projeto, baseado no exemplo abaixo.
     **Importante:** O `APP_DB_USER` e `APP_DB_PASS` devem ser os mesmos definidos em `db_init/init.sql`.
 
-    ```
+    ```env
     # Configuração do Super-usuário do Postgres
     POSTGRES_USER=adicione o user sem aspas
     POSTGRES_PASSWORD=adicione a senha sem aspas
@@ -80,7 +100,7 @@ Acesse a documentação gerada automaticamente pelo FastAPI para ver e testar to
 }
 ```
 
-Listar Jogadores (GET)
+- Listar Jogadores (GET)
 
 URL: `http://localhost:8000/jogadores/`
 
@@ -88,13 +108,13 @@ URL: `http://localhost:8000/jogadores/`
 
 Este projeto utiliza GitHub Actions para automação completa. O workflow está definido em `.github/workflows/cicd.yml`.
 
-Como funciona o Pipeline:
+### Como funciona o Pipeline:
 
 - Testes (CI): A cada push na branch main, testes unitários são executados automaticamente com pytest para garantir a integridade do código.
 - Build & Push (CD): Se os testes passarem, uma nova imagem Docker é construída e enviada para o Docker Hub, versionada com o hash do commit.
 - Deploy (CD): O GitHub conecta-se via SSH ao servidor VPS, baixa a nova imagem e recria os containers com a versão atualizada.
 
-Segredos (Secrets) configurados no GitHub:
+### Segredos (Secrets) configurados no GitHub:
 
 Para que o pipeline funcione, as seguintes variáveis foram configuradas em Settings > Secrets and variables > Actions:
 
